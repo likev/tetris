@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta content="IE=edge" http-equiv="X-UA-Compatible">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    
+
     <meta content="Tetris 俄罗斯方块 created with basic html and js " name="description">
     <title>Tetris 俄罗斯方块</title>
     <style>
@@ -77,7 +77,7 @@
                 for (let row = row_count - 1; row >= 0; row--) {
                     var l = $(`<p data-row=${row}></p>`);
                     for (let col = 0; col < col_count; col++) {
-                        var c = $('<span></span>').attr({ 'data-row': row, 'data-col': col });
+                        var c = $('<span></span>').attr({ 'data-col': col });
 
                         l.append(c);
                     }
@@ -162,15 +162,7 @@
 
             let speed = 300;
 
-            /*
-    <div id='control'>
-        <button data-do='moveLeft' data-code=37>&lt;--</button>
-        <button data-do='transType' data-code=38>转换</button>
-        <button data-do='moveRight' data-code=39>--&gt;</button>
-        <button data-do='speedUp' data-code=40>加速</button>
-    </div>
-            */
-            function onKeyDown(e){
+            function onKeyDown(e) {
                 var row = +current_type.attr('data-row'), col = +current_type.attr('data-col');
                 let type = current_type.data('type');
 
@@ -212,11 +204,11 @@
                 if (e.keyCode !== 40) speed = 300;
             }
 
-            
-            $('#control button').click(function(){
+
+            $('#control button').click(function () {
                 let code = +$(this).data('code');
 
-                onKeyDown({keyCode: code});
+                onKeyDown({ keyCode: code });
             })
 
             $(document).on('keydown', onKeyDown);
@@ -228,15 +220,16 @@
 
                 if (JSON.stringify(type) === JSON.stringify([[1]])) {
                     for (let i = 0; i <= row + row_change; i++) {
-                        let fill = $(`#view span[data-row=${i}][data-col=${col + col_change}]`).hasClass('fill');
+                        let fill = $(`#view p[data-row=${i}] span[data-col=${col + col_change}]`).hasClass('fill');
                         if (!fill) return true;
                     }
                 }
 
                 for (let i = 0; i < type.length; i++) {
+                    let line = $(`#view p[data-row=${row + i + row_change}]`);
                     let k = 0;
                     for (let m of type[i]) {
-                        if (m && $(`#view span[data-row=${row + i + row_change}][data-col=${k + col + col_change}]`).hasClass('fill')) {
+                        if (m && line.find(`span[data-col=${k + col + col_change}]`).hasClass('fill')) {
 
                             return false;
                         }
@@ -255,16 +248,17 @@
                     let line = $(`#view p[data-row=${row}]`);
 
                     for (let col = 0; col < col_count; col++) {
-                        let item = $(`#view span[data-row=${row}][data-col=${col}]`);
+                        let item = line.find(`span[data-col=${col}]`);
                         let fill = item.hasClass('fill');
                         if (!fill) full_line = false;
-
-                        if (full_line_count) item.attr('data-row', row - full_line_count);
                     }
+
 
                     if (full_line) {
                         line.remove();
                         full_line_count++;
+                    } else {
+                        if (full_line_count) line.attr('data-row', row - full_line_count);
                     }
 
                 }
@@ -272,7 +266,7 @@
                 for (let row = row_count - full_line_count; row < row_count; row++) {
                     var l = $(`<p data-row=${row}></p>`);
                     for (let col = 0; col < col_count; col++) {
-                        var c = $('<span></span>').attr({ 'data-row': row, 'data-col': col });
+                        var c = $('<span></span>').attr({ 'data-col': col });
 
                         l.append(c);
                     }
@@ -290,21 +284,18 @@
 
                 if (check_run && row > 0) {
                     row--;
-
-
                     current_type
                         .css('bottom', row * span_width)
                         .attr({ 'data-row': row, 'data-col': col });
                 } else {
 
                     for (let i = 0; i < type.length; i++) {
+                        let line = $(`#view p[data-row=${row + i}]`);
                         let k = 0;
                         for (let m of type[i]) {
-                            if (m) $(`#view span[data-row=${row + i}][data-col=${k + col}]`).addClass('fill');
+                            if (m) line.find(`span[data-col=${k + col}]`).addClass('fill');
                             k++;
                         }
-
-
                     }
 
                     current_type.remove();
