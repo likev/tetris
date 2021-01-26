@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta content="IE=edge" http-equiv="X-UA-Compatible">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    
+    <meta content="Tetris 俄罗斯方块 created with basic html and js " name="description">
+    <title>Tetris 俄罗斯方块</title>
+    <style>
+        #view {
+            position: relative;
+            height: 800px;
+            width: 600px;
+            padding: 0px;
+            border: 1px blue solid;
+        }
+
+        .type {
+            position: absolute;
+            bottom: 800px;
+            left: 0px;
+        }
+
+        .type p,
+        #view p {
+            margin: 0;
+            height: 20px
+        }
+
+        #view span,
+        .type span {
+            display: inline-block;
+            height: 20px;
+            width: 20px;
+        }
+
+        .fill {
+            background-color: red;
+        }
+
+        #control {
+            margin: 20px 20px 0 20px;
+        }
+
+        #control button {
+            padding: 5px 10px;
+            margin-left: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id='view'>
+    </div>
+
+    <div id='control'>
+        <button data-do='moveLeft' data-code=37>&lt;--</button>
+        <button data-do='transType' data-code=38>转换</button>
+        <button data-do='moveRight' data-code=39>--&gt;</button>
+        <button data-do='speedUp' data-code=40>加速</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.1.0/dist/jquery.min.js"></script>
+    <script>
+        $(function () {
+
+            const row_count = 24, col_count = 16, span_width = 20;
+
+            function initial() {
+                var result =
+                    $('#view')
+                        .width(col_count * span_width)
+                        .height(row_count * span_width);
+
+                for (let row = row_count - 1; row >= 0; row--) {
+                    var l = $(`<p data-row=${row}></p>`);
+                    for (let col = 0; col < col_count; col++) {
+                        var c = $('<span></span>').attr({ 'data-row': row, 'data-col': col });
+
+                        l.append(c);
+                    }
+                    result.append(l);
+                }
+            }
+            initial()
+
+            //console.log($('span[data-row=20][data-col=10]'))
+
+            function create_type(c, row_bottom, col_left = 0) {
+                //console.log(c)
+                var result = $('<div class="type"></div>');
+
+
+                for (let row of c) {
+                    var l = $('<p></p>');
+                    for (let fill of row) {
+                        var span = $('<span></span>');
+                        if (fill) span.addClass('fill');
+                        l.append(span);
+                    }
+
+
+                    result.append(l);
+                }
+                //console.log(c)
+
+                if (!row_bottom) row_bottom = row_count - c.length;
+
+                $(result)
+                    .css({
+                        bottom: row_bottom * span_width,
+                        left: col_left * span_width
+                    })
+                    .attr({ 'data-row': row_bottom, 'data-col': col_left })
+                    .data('type', c.reverse());
+
+                return result;
+            }
+
+
+            var types = {
+                a: [[1, 0, 0], [1, 1, 1]],
+                b: [[1, 1], [1, 1]],
+                c: [[1, 1, 1, 1]],
+                d: [[1]],
+                e: [[0, 1, 0], [1, 1, 1]],
+                f: [[0, 0, 1], [1, 1, 1]],
+                g: [[1, 1, 0], [0, 1, 1]],
+                h: [[0, 1, 1], [1, 1, 0]]
+            }
+            function random_type() {
+                let names = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
+                let random_name = names[Math.floor(Math.random() * names.length)];
+
+                return types[random_name];
+            }
+
+            function clone_object(o) {
+                return JSON.parse(JSON.stringify(o));
+            }
+
+            function trans_array(a) {
+                let m = clone_object(a).reverse();
+                let b = [];
+
+                for (let i = 0; i < m[0].length; i++) {
+                    let c = [];
+                    for (let j = 0; j < m.length; j++) {
+                        c[j] = m[j][i];
+                    }
+                    b.push(c);
+                }
+
+                return b;
+            }
+
+            var current_type = create_type(clone_object(random_type()));
+            $('#view').append(current_type)
+
+            let speed = 300;
+
+            /*
+    <div id='control'>
+        <button data-do='moveLeft' data-code=37>&lt;--</button>
+        <button data-do='transType' data-code=38>转换</button>
+        <button data-do='moveRight' data-code=39>--&gt;</button>
+        <button data-do='speedUp' data-code=40>加速</button>
+    </div>
+            */
+            function onKeyDown(e){
+                var row = +current_type.attr('data-row'), col = +current_type.attr('data-col');
+                let type = current_type.data('type');
+
+                switch (e.keyCode) {
+                    case 37:
+                        if (col - 1 >= 0 && checkNext(0, -1)) {
+                            col--;
+                            current_type.attr('data-col', col);
+                            current_type.css({ left: col * span_width });
+                        }
+                        break;
+
+                    case 39:
+                        if (col + type[0].length < col_count && checkNext(0, 1)) {
+                            col++;
+                            current_type.attr('data-col', col);
+                            current_type.css({ left: col * span_width });
+                        }
+                        break;
+
+                    case 38:
+
+                        let new_type = trans_array(type.reverse());
+
+                        current_type.remove();
+
+                        let new_width = new_type[0].length;
+                        if (col + new_width > col_count) col = col_count - new_width;
+
+                        current_type = create_type(new_type, row, col);
+                        $('#view').append(current_type);
+
+                        break;
+                    case 40:
+                        speed = 30;
+                        break;
+                }
+
+                if (e.keyCode !== 40) speed = 300;
+            }
+
+            
+            $('#control button').click(function(){
+                let code = +$(this).data('code');
+
+                onKeyDown({keyCode: code});
+            })
+
+            $(document).on('keydown', onKeyDown);
+
+            function checkNext(row_change, col_change) {
+                var row = +current_type.attr('data-row'), col = +current_type.attr('data-col');
+
+                var type = current_type.data('type');
+
+                if (JSON.stringify(type) === JSON.stringify([[1]])) {
+                    for (let i = 0; i <= row + row_change; i++) {
+                        let fill = $(`#view span[data-row=${i}][data-col=${col + col_change}]`).hasClass('fill');
+                        if (!fill) return true;
+                    }
+                }
+
+                for (let i = 0; i < type.length; i++) {
+                    let k = 0;
+                    for (let m of type[i]) {
+                        if (m && $(`#view span[data-row=${row + i + row_change}][data-col=${k + col + col_change}]`).hasClass('fill')) {
+
+                            return false;
+                        }
+                        k++;
+                    }
+                }
+
+                return true;
+            }
+
+            function clearFullLine() {
+                let full_line_count = 0;
+                for (let row = 0; row < row_count; row++) {
+
+                    let full_line = true;
+                    let line = $(`#view p[data-row=${row}]`);
+
+                    for (let col = 0; col < col_count; col++) {
+                        let item = $(`#view span[data-row=${row}][data-col=${col}]`);
+                        let fill = item.hasClass('fill');
+                        if (!fill) full_line = false;
+
+                        if (full_line_count) item.attr('data-row', row - full_line_count);
+                    }
+
+                    if (full_line) {
+                        line.remove();
+                        full_line_count++;
+                    }
+
+                }
+
+                for (let row = row_count - full_line_count; row < row_count; row++) {
+                    var l = $(`<p data-row=${row}></p>`);
+                    for (let col = 0; col < col_count; col++) {
+                        var c = $('<span></span>').attr({ 'data-row': row, 'data-col': col });
+
+                        l.append(c);
+                    }
+                    $('#view').prepend(l);
+                }
+
+            }
+
+            function nextType() {
+                var row = +current_type.attr('data-row'), col = +current_type.attr('data-col');
+
+                var check_run = checkNext(-1, 0);
+
+                var type = current_type.data('type');
+
+                if (check_run && row > 0) {
+                    row--;
+
+
+                    current_type
+                        .css('bottom', row * span_width)
+                        .attr({ 'data-row': row, 'data-col': col });
+                } else {
+
+                    for (let i = 0; i < type.length; i++) {
+                        let k = 0;
+                        for (let m of type[i]) {
+                            if (m) $(`#view span[data-row=${row + i}][data-col=${k + col}]`).addClass('fill');
+                            k++;
+                        }
+
+
+                    }
+
+                    current_type.remove();
+                    clearFullLine();
+
+                    speed = 300;
+
+                    current_type = create_type(clone_object(random_type()));
+                    $('#view').append(current_type);
+                }
+
+                setTimeout(nextType, speed);
+            }
+
+            nextType();
+            //console.log($('.type').data('bottom'))
+        })
+    </script>
+</body>
+
+</html>
